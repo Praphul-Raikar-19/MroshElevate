@@ -419,3 +419,25 @@ CREATE POLICY "Users can upload their own avatar" ON storage.objects FOR INSERT 
 
 CREATE POLICY "Public can view post media" ON storage.objects FOR SELECT USING (bucket_id = 'post-media');
 CREATE POLICY "Users can upload post media" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-media' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- =========================================================================
+-- SEED DATA: KARNATAKA PILOT EVENTS & TAXONOMY
+-- =========================================================================
+
+INSERT INTO public.events (title, day, month, meta, event_type) VALUES
+('Creative Mixer', '25', 'AUG', '7:00 PM • Virtual Community Room', 'virtual'),
+('Film & Foley Workshop', '02', 'SEP', '2:00 PM • Studio B, Acoustic Bay Bangalore', 'in_person'),
+('Channapatna Craft & UI Meet', '15', 'SEP', '10:00 AM • Bangalore Design Hub', 'in_person')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.skills (name, category, is_regional_craft) VALUES
+('UI/UX Design', 'Digital', false),
+('Blender 3D', 'Digital', false),
+('Figma Prototyping', 'Digital', false),
+('Channapatna Lacquerware', 'Craft', true),
+('Ilkal Handloom Weaving', 'Craft', true),
+('Bidri Metal Inlay', 'Craft', true),
+('Dolby Atmos Mixing', 'Audio', false),
+('Foley Sound Design', 'Audio', false),
+('Anamorphic Cinematography', 'Film', false)
+ON CONFLICT (name) DO NOTHING;

@@ -8,9 +8,13 @@ const MROSH_SUPABASE = (function () {
   const STORAGE_KEY_URL = "mrosh_supabase_url";
   const STORAGE_KEY_ANON = "mrosh_supabase_anon";
 
-  // Check stored keys or use fallback placeholders
-  let supabaseUrl = localStorage.getItem(STORAGE_KEY_URL) || "";
-  let supabaseAnonKey = localStorage.getItem(STORAGE_KEY_ANON) || "";
+  // Default live project credentials
+  const DEFAULT_SUPABASE_URL = "https://lemcrtghvbbultjlahwb.supabase.co";
+  const DEFAULT_SUPABASE_ANON = "sb_publishable_08b4AYYpHtc9NhODexmefA_rI3nNYa5";
+
+  // Check stored keys or use live defaults
+  let supabaseUrl = localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_SUPABASE_URL;
+  let supabaseAnonKey = localStorage.getItem(STORAGE_KEY_ANON) || DEFAULT_SUPABASE_ANON;
 
   let clientInstance = null;
 
@@ -75,3 +79,4 @@ const MROSH_SUPABASE = (function () {
     getConfig
   };
 })();
+
