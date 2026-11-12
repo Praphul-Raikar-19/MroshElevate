@@ -554,10 +554,33 @@ document.addEventListener("DOMContentLoaded", () => {
         renderOnboardingStep();
       });
 
-      document.getElementById("obFinalizeBtn").addEventListener("click", () => {
+      document.getElementById("obFinalizeBtn").addEventListener("click", async () => {
         const nameVal = document.getElementById("obName")?.value || "Pilot Participant";
-        showToast(`Welcome to MROSHELEVATE, ${nameVal}! Your pilot account is live.`);
-        closeModal(onboardingModal);
+        const emailVal = document.getElementById("obEmail")?.value || `user-${Date.now()}@mroshelevate.io`;
+        const districtVal = document.getElementById("obDistrict")?.value || "Bangalore Urban";
+
+        const btn = document.getElementById("obFinalizeBtn");
+        btn.disabled = true;
+        btn.textContent = "Setting up account...";
+
+        const { data, isLive, error } = await mroshBackend.signUp({
+          fullName: nameVal,
+          email: emailVal,
+          password: "PilotPassword2026!",
+          role: state.selectedRoleForSignup,
+          district: districtVal
+        });
+
+        btn.disabled = false;
+        btn.textContent = "Complete Registration & Launch";
+
+        if (!error) {
+          showToast(`Welcome to MROSHELEVATE, ${nameVal}! Account active (${isLive ? 'Supabase Live' : 'Local Mode'}).`);
+          closeModal(onboardingModal);
+        } else {
+          showToast(`Notice: ${error.message || 'Continuing in local mode'}`);
+          closeModal(onboardingModal);
+        }
       });
     }
   }
@@ -729,7 +752,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3500);
   }
 
+  // 10. Supabase Configuration Modal & Status Pill Manager
+  const sbStatusPill = document.getElementById("supabaseStatusPill");
+  const sbConfigModal = document.getElementById("supabaseConfigModal");
+  const sbConfigForm = document.getElementById("supabaseConfigForm");
+  const sbUrlInput = document.getElementById("sbProjectUrlInput");
+  const sbAnonInput = document.getElementById("sbAnonKeyInput");
+  const clearSbBtn = document.getElementById("clearSbConfigBtn");
+  const sbStatusText = document.getElementById("supabaseStatusText");
+
+  function updateSupabaseStatusUI() {
+    const isLive = MROSH_SUPABASE.isConfigured();
+    if (sbStatusPill && sbStatusText) {
+      if (isLive) {
+        sbStatusPill.classList.add("connected");
+        sbStatusText.textContent = "Supabase: Live";
+      } else {
+        sbStatusPill.classList.remove("connected");
+        sbStatusText.textContent = "Supabase: Setup";
+      }
+    }
+  }
+
+  if (sbStatusPill && sbConfigModal) {
+    sbStatusPill.addEventListener("click", () => {
+      const cfg = MROSH_SUPABASE.getConfig();
+      if (sbUrlInput) sbUrlInput.value = cfg.url;
+      if (sbAnonInput) sbAnonInput.value = cfg.anonKey;
+      openModal(sbConfigModal);
+    });
+  }
+
+  if (sbConfigForm) {
+    sbConfigForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const url = sbUrlInput?.value;
+      const key = sbAnonInput?.value;
+      const success = MROSH_SUPABASE.saveConfig(url, key);
+      if (success) {
+        updateSupabaseStatusUI();
+        showToast("Supabase configuration saved! Reloading live feed...");
+        closeModal(sbConfigModal);
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    });
+  }
+
+  if (clearSbBtn) {
+    clearSbBtn.addEventListener("click", () => {
+      MROSH_SUPABASE.clearConfig();
+      updateSupabaseStatusUI();
+      showToast("Supabase reset to offline seed mode.");
+      closeModal(sbConfigModal);
+      setTimeout(() => window.location.reload(), 800);
+    });
+  }
+
+  // Expose globally
+  window.openProfileModal = openProfileModal;
+  window.showToast = showToast;
+
   // Initial Runs
+  updateSupabaseStatusUI();
   renderCreators();
   renderOpportunities();
   renderMilestones();

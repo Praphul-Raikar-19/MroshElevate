@@ -1,112 +1,124 @@
 -- =========================================================================
--- MROSHELEVATE DATABASE SCHEMA (PostgreSQL / Supabase DDL)
--- Version: 1.0.0
--- Description: Creator-Investor Ecosystem for MROSHELEVATE
+-- MROSHELEVATE PRODUCTION DATABASE SCHEMA (PostgreSQL / Supabase DDL)
+-- Version: 2.0.0 (Sprint 2 - Production Backend Integration)
+-- Description: Creator-Investor Ecosystem for MROSHELEVATE & Karnataka Pilot
 -- =========================================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. ENUMS
-CREATE TYPE user_role AS ENUM (
-    'creator',
-    'brand',
-    'studio',
-    'investor',
-    'shg_collective',
-    'admin'
-);
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM (
+        'creator',
+        'brand',
+        'studio',
+        'investor',
+        'shg_collective',
+        'admin'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE availability_status AS ENUM (
-    'available',
-    'busy',
-    'open_to_offers',
-    'unavailable'
-);
+DO $$ BEGIN
+    CREATE TYPE availability_status AS ENUM (
+        'available',
+        'busy',
+        'open_to_offers',
+        'unavailable'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE opportunity_type AS ENUM (
-    'gig',
-    'full_time',
-    'contract',
-    'brand_campaign',
-    'contest',
-    'mentorship_grant'
-);
+DO $$ BEGIN
+    CREATE TYPE opportunity_type AS ENUM (
+        'gig',
+        'full_time',
+        'contract',
+        'brand_campaign',
+        'contest',
+        'mentorship_grant'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE milestone_status AS ENUM (
-    'pending',
-    'in_progress',
-    'submitted',
-    'approved',
-    'revision_requested'
-);
+DO $$ BEGIN
+    CREATE TYPE milestone_status AS ENUM (
+        'pending',
+        'in_progress',
+        'submitted',
+        'approved',
+        'revision_requested'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TYPE collaboration_status AS ENUM (
-    'pending',
-    'accepted',
-    'declined',
-    'completed',
-    'cancelled'
-);
+DO $$ BEGIN
+    CREATE TYPE collaboration_status AS ENUM (
+        'pending',
+        'accepted',
+        'declined',
+        'completed',
+        'cancelled'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- 2. USERS TABLE
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+-- 2. PUBLIC PROFILES TABLE (Linked 1:1 with auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
     role user_role NOT NULL DEFAULT 'creator',
-    avatar_url TEXT,
+    avatar_url TEXT DEFAULT 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
     banner_url TEXT,
-    is_verified BOOLEAN DEFAULT FALSE,
-    verification_badge VARCHAR(50), -- 'verified_creator', 'verified_shg', 'verified_studio', 'verified_brand'
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. USER PROFILES
-CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     headline VARCHAR(200),
     bio TEXT,
-    hourly_rate DECIMAL(10, 2),
+    hourly_rate VARCHAR(50) DEFAULT '₹2,000/hr',
     currency VARCHAR(10) DEFAULT 'INR',
-    primary_category VARCHAR(100), -- 'UI/UX Design', 'Filmmaking', 'Handloom & Craft', 'Sound Design'
-    district VARCHAR(100),         -- 'Bangalore Urban', 'Mysore', 'Dharwad', 'Bidar', etc.
+    primary_category VARCHAR(100) DEFAULT 'Digital & UI/UX',
+    district VARCHAR(100) DEFAULT 'Bangalore Urban',
     state VARCHAR(100) DEFAULT 'Karnataka',
     country VARCHAR(100) DEFAULT 'India',
     availability availability_status DEFAULT 'available',
-    experience_years INT DEFAULT 0,
+    experience_years INT DEFAULT 2,
     portfolio_website TEXT,
-    social_links JSONB DEFAULT '{}'::jsonb, -- e.g. {"instagram": "...", "behance": "...", "github": "..."}
+    social_links JSONB DEFAULT '{}'::jsonb,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_badge VARCHAR(50) DEFAULT 'verified_creator',
     rating DECIMAL(3, 2) DEFAULT 5.0,
-    total_reviews INT DEFAULT 0,
+    reviews_count INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. SKILLS TAXONOMY
-CREATE TABLE IF NOT EXISTS skills (
+-- 3. SKILLS TAXONOMY
+CREATE TABLE IF NOT EXISTS public.skills (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) UNIQUE NOT NULL,
     category VARCHAR(100) NOT NULL,
     is_regional_craft BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS user_skills (
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    skill_id UUID REFERENCES skills(id) ON DELETE CASCADE,
-    proficiency_level VARCHAR(50) DEFAULT 'intermediate', -- 'beginner', 'intermediate', 'expert'
+CREATE TABLE IF NOT EXISTS public.user_skills (
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    skill_id UUID REFERENCES public.skills(id) ON DELETE CASCADE,
+    proficiency_level VARCHAR(50) DEFAULT 'intermediate',
     PRIMARY KEY (user_id, skill_id)
 );
 
--- 5. PORTFOLIO ITEMS
-CREATE TABLE IF NOT EXISTS portfolio_items (
+-- 4. PORTFOLIO ITEMS
+CREATE TABLE IF NOT EXISTS public.portfolio_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    media_type VARCHAR(50) NOT NULL, -- 'image', 'video', 'audio', 'document'
+    media_type VARCHAR(50) NOT NULL DEFAULT 'image', -- 'image', 'video', 'audio', 'document'
     media_url TEXT NOT NULL,
     thumbnail_url TEXT,
     tags TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -116,10 +128,71 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. OPPORTUNITIES & BRIEFS
-CREATE TABLE IF NOT EXISTS opportunities (
+-- 5. CREATOR FEED POSTS
+CREATE TABLE IF NOT EXISTS public.posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    poster_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    media_url TEXT,
+    media_type VARCHAR(50), -- 'image', 'video', 'audio'
+    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+    likes_count INT DEFAULT 0,
+    comments_count INT DEFAULT 0,
+    shares_count INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. POST LIKES (Unique constraint prevents duplicate likes)
+CREATE TABLE IF NOT EXISTS public.post_likes (
+    post_id UUID NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+-- 7. POST COMMENTS
+CREATE TABLE IF NOT EXISTS public.post_comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    post_id UUID NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. SAVED POSTS / BOOKMARKS
+CREATE TABLE IF NOT EXISTS public.saved_posts (
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    post_id UUID NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (user_id, post_id)
+);
+
+-- 9. CONNECTIONS (Follow / Network Graph)
+CREATE TABLE IF NOT EXISTS public.connections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'accepted', -- 'pending', 'accepted', 'declined'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(sender_id, receiver_id)
+);
+
+-- 10. UPCOMING EVENTS
+CREATE TABLE IF NOT EXISTS public.events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(200) NOT NULL,
+    day VARCHAR(10) NOT NULL,
+    month VARCHAR(10) NOT NULL,
+    meta TEXT NOT NULL,
+    event_type VARCHAR(50) DEFAULT 'virtual',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 11. OPPORTUNITIES & BRIEFS
+CREATE TABLE IF NOT EXISTS public.opportunities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    poster_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
@@ -130,48 +203,49 @@ CREATE TABLE IF NOT EXISTS opportunities (
     location VARCHAR(150),
     is_remote BOOLEAN DEFAULT TRUE,
     required_skills TEXT[] DEFAULT ARRAY[]::TEXT[],
-    deadline TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(50) DEFAULT 'open', -- 'open', 'in_progress', 'closed'
+    deadline VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'open',
     applicant_count INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 7. APPLICATIONS
-CREATE TABLE IF NOT EXISTS applications (
+-- 12. APPLICATIONS
+CREATE TABLE IF NOT EXISTS public.applications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    opportunity_id UUID REFERENCES opportunities(id) ON DELETE CASCADE,
-    applicant_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    opportunity_id UUID REFERENCES public.opportunities(id) ON DELETE CASCADE,
+    applicant_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     pitch_text TEXT NOT NULL,
-    proposed_rate DECIMAL(12, 2),
+    proposed_rate VARCHAR(50),
+    estimated_delivery VARCHAR(50),
     portfolio_references TEXT[],
-    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'shortlisted', 'accepted', 'rejected'
+    status VARCHAR(50) DEFAULT 'pending',
     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 8. PROJECTS & COLLABORATIONS
-CREATE TABLE IF NOT EXISTS projects (
+-- 13. PROJECTS & COLLABORATIONS
+CREATE TABLE IF NOT EXISTS public.projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    creator_id UUID REFERENCES users(id),
-    client_id UUID REFERENCES users(id),
+    creator_id UUID REFERENCES public.profiles(id),
+    client_id UUID REFERENCES public.profiles(id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(100),
-    total_budget DECIMAL(12, 2),
+    total_budget VARCHAR(50),
     currency VARCHAR(10) DEFAULT 'INR',
-    status VARCHAR(50) DEFAULT 'active', -- 'draft', 'active', 'completed', 'paused'
+    status VARCHAR(50) DEFAULT 'active',
     start_date DATE,
     end_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 9. PROJECT MILESTONES (Transparent Execution Tracker)
-CREATE TABLE IF NOT EXISTS project_milestones (
+-- 14. PROJECT MILESTONES (SafeGuard Model)
+CREATE TABLE IF NOT EXISTS public.project_milestones (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
     order_index INT NOT NULL,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    amount DECIMAL(12, 2),
+    amount VARCHAR(50),
     status milestone_status DEFAULT 'pending',
     due_date DATE,
     proof_url TEXT,
@@ -180,58 +254,168 @@ CREATE TABLE IF NOT EXISTS project_milestones (
     approved_at TIMESTAMP WITH TIME ZONE
 );
 
--- 10. COLLABORATION REQUESTS
-CREATE TABLE IF NOT EXISTS collaboration_requests (
+-- 15. COLLABORATION REQUESTS
+CREATE TABLE IF NOT EXISTS public.collaboration_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    recipient_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    recipient_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     project_title VARCHAR(200) NOT NULL,
     proposal_text TEXT NOT NULL,
-    offered_compensation DECIMAL(12, 2),
+    offered_budget VARCHAR(50),
     status collaboration_status DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 11. MESSAGES & COMMUNICATION
-CREATE TABLE IF NOT EXISTS messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    recipient_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
-    content TEXT NOT NULL,
-    attachment_url TEXT,
-    attachment_type VARCHAR(50),
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- =========================================================================
+-- DATABASE TRIGGERS: AUTOMATED USER PROFILE PROVISIONING
+-- =========================================================================
 
--- 12. INDEXES FOR PERFORMANCE
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_profiles_district ON user_profiles(district);
-CREATE INDEX idx_profiles_category ON user_profiles(primary_category);
-CREATE INDEX idx_profiles_availability ON user_profiles(availability);
-CREATE INDEX idx_portfolio_user ON portfolio_items(user_id);
-CREATE INDEX idx_opportunities_status ON opportunities(status);
-CREATE INDEX idx_applications_opportunity ON applications(opportunity_id);
-CREATE INDEX idx_messages_thread ON messages(sender_id, recipient_id);
+-- Automatically create profile entry when a new user signs up in auth.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+    INSERT INTO public.profiles (
+        id,
+        email,
+        full_name,
+        role,
+        district,
+        avatar_url,
+        is_verified,
+        verification_badge
+    )
+    VALUES (
+        new.id,
+        new.email,
+        COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+        COALESCE((new.raw_user_meta_data->>'role')::public.user_role, 'creator'::public.user_role),
+        COALESCE(new.raw_user_meta_data->>'district', 'Bangalore Urban'),
+        COALESCE(new.raw_user_meta_data->>'avatar_url', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'),
+        TRUE,
+        CASE 
+            WHEN new.raw_user_meta_data->>'role' = 'shg_collective' THEN 'verified_shg'
+            WHEN new.raw_user_meta_data->>'role' = 'studio' THEN 'verified_studio'
+            ELSE 'verified_creator'
+        END
+    );
+    RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 13. ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE portfolio_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE project_milestones ENABLE ROW LEVEL SECURITY;
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+-- Trigger attachment
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Read policies: Public can read verified creators, profiles, portfolios and open opportunities
-CREATE POLICY "Public profiles are viewable by everyone" ON user_profiles FOR SELECT USING (true);
-CREATE POLICY "Public portfolios are viewable by everyone" ON portfolio_items FOR SELECT USING (true);
-CREATE POLICY "Open opportunities are viewable by everyone" ON opportunities FOR SELECT USING (status = 'open');
+-- Trigger to increment/decrement post likes count
+CREATE OR REPLACE FUNCTION public.handle_post_like_counter()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE public.posts SET likes_count = likes_count + 1 WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE public.posts SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- User modification policies: Users can edit their own profiles & portfolios
-CREATE POLICY "Users can update their own profile" ON user_profiles FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own portfolio items" ON portfolio_items FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own portfolio items" ON portfolio_items FOR UPDATE USING (auth.uid() = user_id);
+DROP TRIGGER IF EXISTS on_post_like_changed ON public.post_likes;
+CREATE TRIGGER on_post_like_changed
+    AFTER INSERT OR DELETE ON public.post_likes
+    FOR EACH ROW EXECUTE FUNCTION public.handle_post_like_counter();
 
+-- Trigger to increment/decrement post comments count
+CREATE OR REPLACE FUNCTION public.handle_post_comment_counter()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE public.posts SET comments_count = comments_count + 1 WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE public.posts SET comments_count = GREATEST(comments_count - 1, 0) WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_post_comment_changed ON public.post_comments;
+CREATE TRIGGER on_post_comment_changed
+    AFTER INSERT OR DELETE ON public.post_comments
+    FOR EACH ROW EXECUTE FUNCTION public.handle_post_comment_counter();
+
+-- =========================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- =========================================================================
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portfolio_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.opportunities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_milestones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.collaboration_requests ENABLE ROW LEVEL SECURITY;
+
+-- 1. Profiles
+CREATE POLICY "Public profiles are readable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- 2. Posts
+CREATE POLICY "Posts are viewable by everyone" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can create posts" ON public.posts FOR INSERT WITH CHECK (auth.uid() = author_id);
+CREATE POLICY "Authors can update their own posts" ON public.posts FOR UPDATE USING (auth.uid() = author_id);
+CREATE POLICY "Authors can delete their own posts" ON public.posts FOR DELETE USING (auth.uid() = author_id);
+
+-- 3. Likes
+CREATE POLICY "Likes are viewable by everyone" ON public.post_likes FOR SELECT USING (true);
+CREATE POLICY "Users can toggle their own likes" ON public.post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can remove their own likes" ON public.post_likes FOR DELETE USING (auth.uid() = user_id);
+
+-- 4. Comments
+CREATE POLICY "Comments are viewable by everyone" ON public.post_comments FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can post comments" ON public.post_comments FOR INSERT WITH CHECK (auth.uid() = author_id);
+CREATE POLICY "Authors can delete their comments" ON public.post_comments FOR DELETE USING (auth.uid() = author_id);
+
+-- 5. Saved Posts
+CREATE POLICY "Users can view their own saved posts" ON public.saved_posts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can save posts" ON public.saved_posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can remove saved posts" ON public.saved_posts FOR DELETE USING (auth.uid() = user_id);
+
+-- 6. Connections
+CREATE POLICY "Connections are viewable by everyone" ON public.connections FOR SELECT USING (true);
+CREATE POLICY "Users can send connection requests" ON public.connections FOR INSERT WITH CHECK (auth.uid() = sender_id);
+CREATE POLICY "Users can disconnect" ON public.connections FOR DELETE USING (auth.uid() = sender_id);
+
+-- 7. Events
+CREATE POLICY "Events are viewable by everyone" ON public.events FOR SELECT USING (true);
+
+-- 8. Opportunities & Applications
+CREATE POLICY "Opportunities are viewable by everyone" ON public.opportunities FOR SELECT USING (true);
+CREATE POLICY "Brands and studios can post opportunities" ON public.opportunities FOR INSERT WITH CHECK (auth.uid() = poster_id);
+CREATE POLICY "Applicants and posters can view applications" ON public.applications FOR SELECT USING (auth.uid() = applicant_id OR EXISTS (SELECT 1 FROM public.opportunities WHERE id = opportunity_id AND poster_id = auth.uid()));
+CREATE POLICY "Creators can submit applications" ON public.applications FOR INSERT WITH CHECK (auth.uid() = applicant_id);
+
+-- =========================================================================
+-- STORAGE BUCKETS (Run in Supabase Storage or SQL Editor)
+-- =========================================================================
+
+INSERT INTO storage.buckets (id, name, public) VALUES 
+('avatars', 'avatars', true),
+('covers', 'covers', true),
+('portfolios', 'portfolios', true),
+('post-media', 'post-media', true),
+('deliverables', 'deliverables', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage RLS
+CREATE POLICY "Public can view avatar images" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+CREATE POLICY "Users can upload their own avatar" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Public can view post media" ON storage.objects FOR SELECT USING (bucket_id = 'post-media');
+CREATE POLICY "Users can upload post media" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-media' AND auth.uid()::text = (storage.foldername(name))[1]);

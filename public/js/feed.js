@@ -1,23 +1,46 @@
 /**
- * MROSHELEVATE Feed Application Controller
- * Handles Creator Post Creation, Likes, Comments, Shares, Saves, and Connections
+ * MROSHELEVATE Feed Application Controller (Backend Connected)
+ * Seamlessly interfaces with Supabase Service Layer (mroshBackend)
  */
 
 (function () {
   // Elements
   const feedStreamContainer = document.getElementById("creatorFeedStream");
-  const composerForm = document.getElementById("postComposerForm");
   const composerTextarea = document.getElementById("composerInput");
   const composerSubmitBtn = document.getElementById("publishPostBtn");
   const suggestedConnectionsContainer = document.getElementById("suggestedConnectionsList");
   const upcomingEventsContainer = document.getElementById("upcomingEventsList");
   const sidebarCreatorsContainer = document.getElementById("sidebarCreatorsList");
 
+  let localPostsCache = [];
+
   // 1. Render Feed Stream
-  function renderFeed() {
+  async function renderFeed() {
     if (!feedStreamContainer) return;
 
-    feedStreamContainer.innerHTML = FEED_DATA.posts.map(post => {
+    // Show subtle loading pulse if empty
+    if (localPostsCache.length === 0) {
+      feedStreamContainer.innerHTML = `
+        <div style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 0.9rem;">
+          Loading creator community feed...
+        </div>
+      `;
+    }
+
+    const { data: posts, isLive } = await mroshBackend.getPosts();
+    localPostsCache = posts || [];
+
+    if (localPostsCache.length === 0) {
+      feedStreamContainer.innerHTML = `
+        <div style="text-align: center; padding: 48px 24px; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
+          <p style="color: var(--text-secondary); margin-bottom: 12px;">No posts in the universe yet.</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Be the first creator to share an update!</p>
+        </div>
+      `;
+      return;
+    }
+
+    feedStreamContainer.innerHTML = localPostsCache.map(post => {
       const mediaHtml = post.media ? `
         <div class="post-media-container">
           <img src="${post.media.url}" alt="Post media" class="post-media-img" loading="lazy" />
@@ -103,7 +126,7 @@
             </div>
             
             <div class="comment-input-row">
-              <input type="text" class="comment-input-field" id="inputComment-${post.id}" placeholder="Write a comment as ${FEED_DATA.currentUser.name}..." />
+              <input type="text" class="comment-input-field" id="inputComment-${post.id}" placeholder="Write a comment..." />
               <button class="btn btn-primary btn-sm submit-comment-btn" data-id="${post.id}">Post</button>
             </div>
           </div>
@@ -114,16 +137,17 @@
     attachFeedEventListeners();
   }
 
-  // 2. Attach Event Handlers for Likes, Comments, Shares, Saves
+  // 2. Attach Event Handlers
   function attachFeedEventListeners() {
     // Likes
     document.querySelectorAll(".like-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const postId = btn.dataset.id;
-        const post = FEED_DATA.posts.find(p => p.id === postId);
+        const post = localPostsCache.find(p => p.id === postId);
         if (!post) return;
 
-        post.isLiked = !post.isLiked;
+        const isCurrentlyLiked = post.isLiked;
+        post.isLiked = !isCurrentlyLiked;
         post.likes += post.isLiked ? 1 : -1;
 
         btn.classList.toggle("liked", post.isLiked);
@@ -132,13 +156,15 @@
         const counter = btn.querySelector(".like-counter");
         if (counter) counter.textContent = post.likes;
 
-        // Visual bounce animation
         btn.style.transform = "scale(1.2)";
         setTimeout(() => btn.style.transform = "scale(1)", 150);
+
+        // Async persistence to Supabase
+        await mroshBackend.toggleLike(postId, isCurrentlyLiked);
       });
     });
 
-    // Comment drawer toggle
+    // Comment Drawer Toggle
     document.querySelectorAll(".comment-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const postId = btn.dataset.id;
@@ -154,7 +180,7 @@
       });
     });
 
-    // Submit comment
+    // Submit Comment
     document.querySelectorAll(".submit-comment-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         submitComment(btn.dataset.id);
@@ -170,46 +196,37 @@
       });
     });
 
-    function submitComment(postId) {
+    async function submitComment(postId) {
       const input = document.getElementById(`inputComment-${postId}`);
       if (!input || !input.value.trim()) return;
 
-      const post = FEED_DATA.posts.find(p => p.id === postId);
-      if (!post) return;
-
-      const newComment = {
-        id: `c-${Date.now()}`,
-        author: FEED_DATA.currentUser.name,
-        avatar: FEED_DATA.currentUser.avatar,
-        text: input.value.trim(),
-        time: "Just now"
-      };
-
-      if (!post.comments) post.comments = [];
-      post.comments.push(newComment);
-
+      const commentText = input.value.trim();
       input.value = "";
 
-      // Re-render comments container
-      const commentsListBox = document.getElementById(`commentsList-${postId}`);
-      if (commentsListBox) {
-        const commentRow = document.createElement("div");
-        commentRow.className = "comment-row";
-        commentRow.innerHTML = `
-          <img src="${newComment.avatar}" alt="${newComment.author}" class="comment-avatar" />
-          <div class="comment-bubble">
-            <div class="comment-author">${newComment.author} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.75rem;">• ${newComment.time}</span></div>
-            <div class="comment-text">${newComment.text}</div>
-          </div>
-        `;
-        commentsListBox.appendChild(commentRow);
-      }
+      // Post comment to backend
+      const { data: newComment } = await mroshBackend.addComment(postId, commentText);
 
-      // Update counter
-      const postCard = document.getElementById(`postCard-${postId}`);
-      if (postCard) {
-        const counter = postCard.querySelector(".comment-counter");
-        if (counter) counter.textContent = post.comments.length;
+      if (newComment) {
+        const commentsListBox = document.getElementById(`commentsList-${postId}`);
+        if (commentsListBox) {
+          const commentRow = document.createElement("div");
+          commentRow.className = "comment-row";
+          commentRow.innerHTML = `
+            <img src="${newComment.avatar}" alt="${newComment.author}" class="comment-avatar" />
+            <div class="comment-bubble">
+              <div class="comment-author">${newComment.author} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.75rem;">• ${newComment.time}</span></div>
+              <div class="comment-text">${newComment.text}</div>
+            </div>
+          `;
+          commentsListBox.appendChild(commentRow);
+        }
+
+        const post = localPostsCache.find(p => p.id === postId);
+        const postCard = document.getElementById(`postCard-${postId}`);
+        if (postCard && post) {
+          const counter = postCard.querySelector(".comment-counter");
+          if (counter) counter.textContent = (post.comments || []).length;
+        }
       }
     }
 
@@ -217,7 +234,7 @@
     document.querySelectorAll(".share-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const postId = btn.dataset.id;
-        const post = FEED_DATA.posts.find(p => p.id === postId);
+        const post = localPostsCache.find(p => p.id === postId);
         if (!post) return;
 
         post.shares += 1;
@@ -226,20 +243,20 @@
 
         if (window.showToast) {
           window.showToast("Post link copied to clipboard & shared to your network!");
-        } else {
-          alert("Post shared successfully!");
         }
       });
     });
 
     // Saves / Bookmarks
     document.querySelectorAll(".save-trigger-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const postId = btn.dataset.id;
-        const post = FEED_DATA.posts.find(p => p.id === postId);
+        const post = localPostsCache.find(p => p.id === postId);
         if (!post) return;
 
-        post.isSaved = !post.isSaved;
+        const isCurrentlySaved = post.isSaved;
+        post.isSaved = !isCurrentlySaved;
+
         btn.classList.toggle("saved", post.isSaved);
         const svg = btn.querySelector("svg");
         if (svg) svg.setAttribute("fill", post.isSaved ? "currentColor" : "none");
@@ -247,14 +264,18 @@
         if (window.showToast) {
           window.showToast(post.isSaved ? "Post saved to your bookmarks." : "Post removed from bookmarks.");
         }
+
+        await mroshBackend.toggleSave(postId, isCurrentlySaved);
       });
     });
 
-    // More options menu trigger
-    document.querySelectorAll(".post-more-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        if (window.showToast) {
-          window.showToast("Post options: Share, Report, Copy Link");
+    // Author Click -> Profile Modal
+    document.querySelectorAll(".post-author-cluster").forEach(cluster => {
+      cluster.addEventListener("click", () => {
+        const authorName = cluster.dataset.author;
+        const matchedCreator = MROSH_DATA.creators.find(c => c.name.toLowerCase().includes(authorName.toLowerCase().split(" ")[0]));
+        if (matchedCreator && window.openProfileModal) {
+          window.openProfileModal(matchedCreator.id);
         }
       });
     });
@@ -273,7 +294,7 @@
     });
   }
 
-  function publishNewPost() {
+  async function publishNewPost() {
     if (!composerTextarea) return;
     const text = composerTextarea.value.trim();
     if (!text) {
@@ -281,38 +302,31 @@
       return;
     }
 
-    const newPost = {
-      id: `post-${Date.now()}`,
-      author: {
-        id: "cr-self",
-        name: FEED_DATA.currentUser.name,
-        role: FEED_DATA.currentUser.role,
-        avatar: FEED_DATA.currentUser.avatar
-      },
-      timeAgo: "Just now",
-      content: text,
-      media: null,
-      likes: 0,
-      isLiked: false,
-      shares: 0,
-      isSaved: false,
-      comments: []
-    };
+    composerSubmitBtn.disabled = true;
+    composerSubmitBtn.textContent = "Publishing...";
 
-    FEED_DATA.posts.unshift(newPost);
-    composerTextarea.value = "";
-    renderFeed();
+    const { data: newPost, error } = await mroshBackend.createPost({ content: text });
 
-    if (window.showToast) {
-      window.showToast("Your post is live in the creator feed!");
+    composerSubmitBtn.disabled = false;
+    composerSubmitBtn.textContent = "Publish Post";
+
+    if (!error && newPost) {
+      composerTextarea.value = "";
+      renderFeed();
+
+      if (window.showToast) {
+        window.showToast("Your post is live in the creator feed!");
+      }
     }
   }
 
-  // 4. Render Suggested Connections (Right Sidebar)
-  function renderSuggestedConnections() {
+  // 4. Render Suggested Connections
+  async function renderSuggestedConnections() {
     if (!suggestedConnectionsContainer) return;
 
-    suggestedConnectionsContainer.innerHTML = FEED_DATA.suggestedConnections.map(conn => `
+    const { data: connections } = await mroshBackend.getSuggestedConnections();
+
+    suggestedConnectionsContainer.innerHTML = (connections || []).map(conn => `
       <div class="suggestion-item">
         <div class="suggestion-info">
           <img src="${conn.avatar}" alt="${conn.name}" class="suggestion-avatar" />
@@ -328,27 +342,32 @@
     `).join("");
 
     suggestedConnectionsContainer.querySelectorAll(".btn-connect").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = btn.dataset.id;
-        const conn = FEED_DATA.suggestedConnections.find(c => c.id === id);
+        const conn = connections.find(c => c.id === id);
         if (!conn) return;
 
-        conn.connected = !conn.connected;
+        const isConnected = conn.connected;
+        conn.connected = !isConnected;
         btn.textContent = conn.connected ? "Connected" : "Connect";
         btn.classList.toggle("connected", conn.connected);
 
         if (window.showToast) {
           window.showToast(conn.connected ? `Connection request sent to ${conn.name}` : `Disconnected from ${conn.name}`);
         }
+
+        await mroshBackend.toggleConnection(id, isConnected);
       });
     });
   }
 
-  // 5. Render Upcoming Events (Right Sidebar)
-  function renderUpcomingEvents() {
+  // 5. Render Upcoming Events
+  async function renderUpcomingEvents() {
     if (!upcomingEventsContainer) return;
 
-    upcomingEventsContainer.innerHTML = FEED_DATA.upcomingEvents.map(ev => `
+    const { data: events } = await mroshBackend.getEvents();
+
+    upcomingEventsContainer.innerHTML = (events || []).map(ev => `
       <div class="event-item">
         <div class="event-date-box">
           <span class="event-day">${ev.day}</span>
@@ -362,21 +381,21 @@
     `).join("");
   }
 
-  // 6. Render Sidebar Featured Creators (Left Sidebar)
+  // 6. Render Sidebar Featured Creators
   function renderSidebarCreators() {
     if (!sidebarCreatorsContainer) return;
 
     const miniList = [
-      { name: "Sarah Chen", role: "Film Director", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=80" },
-      { name: "Marcus Rodriguez", role: "Music Producer", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" },
-      { name: "Emma Thompson", role: "Digital Artist", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&auto=format&fit=crop&q=80" },
-      { name: "David Park", role: "Game Designer", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=80" },
-      { name: "Kavya Murthy", role: "UI/UX & 3D Artist", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" },
-      { name: "Channapatna Collective", role: "Artisan SHG", avatar: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=80&auto=format&fit=crop&q=80" }
+      { id: "cr-sarah", name: "Sarah Chen", role: "Film Director", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=80" },
+      { id: "cr-marcus", name: "Marcus Rodriguez", role: "Music Producer", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" },
+      { id: "cr-emma", name: "Emma Thompson", role: "Digital Artist", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&auto=format&fit=crop&q=80" },
+      { id: "cr-david", name: "David Park", role: "Game Designer", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=80" },
+      { id: "cr-01", name: "Kavya Murthy", role: "UI/UX & 3D Artist", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" },
+      { id: "shg-01", name: "Channapatna Collective", role: "Artisan SHG", avatar: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=80&auto=format&fit=crop&q=80" }
     ];
 
     sidebarCreatorsContainer.innerHTML = miniList.map(item => `
-      <div class="creator-mini-item" title="View ${item.name}">
+      <div class="creator-mini-item" data-id="${item.id}" title="View ${item.name}">
         <img src="${item.avatar}" alt="${item.name}" class="creator-mini-avatar" />
         <div class="creator-mini-info">
           <div class="creator-mini-name">${item.name}</div>
@@ -384,9 +403,19 @@
         </div>
       </div>
     `).join("");
+
+    sidebarCreatorsContainer.querySelectorAll(".creator-mini-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const id = item.dataset.id;
+        const matched = MROSH_DATA.creators.find(c => c.id === id || c.name.toLowerCase().includes(item.querySelector(".creator-mini-name").textContent.toLowerCase().split(" ")[0]));
+        if (matched && window.openProfileModal) {
+          window.openProfileModal(matched.id);
+        }
+      });
+    });
   }
 
-  // Initialize Feed Components
+  // Initialize on DOM load
   document.addEventListener("DOMContentLoaded", () => {
     renderFeed();
     renderSuggestedConnections();
@@ -394,4 +423,3 @@
     renderSidebarCreators();
   });
 })();
-

@@ -381,6 +381,51 @@
     </select>
   </div>
 
+  <!-- Database Connection Status Trigger -->
+  <button class="database-status-pill" id="supabaseStatusPill" title="Configure Supabase Connection">
+    <span class="status-dot-indicator"></span>
+    <span id="supabaseStatusText">Supabase: Offline Mode</span>
+  </button>
+
+  <!-- Supabase Configuration Modal -->
+  <div class="modal-overlay" id="supabaseConfigModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+          <span>⚡ Supabase Backend Connection</span>
+        </h3>
+        <button class="modal-close-btn modal-close-trigger">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: var(--space-md);">
+          Connect MROSHELEVATE directly to your live Supabase project. Enter your project URL and public Anon Key. All operations will immediately query your real PostgreSQL database with Row Level Security.
+        </p>
+
+        <form id="supabaseConfigForm">
+          <div style="margin-bottom: var(--space-md);">
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Supabase Project URL</label>
+            <input type="url" id="sbProjectUrlInput" placeholder="https://xyzcompany.supabase.co" required style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px; color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; outline: none;" />
+          </div>
+
+          <div style="margin-bottom: var(--space-lg);">
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Supabase Public Anon Key</label>
+            <textarea id="sbAnonKeyInput" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px; color: var(--text-primary); font-family: var(--font-mono); font-size: 0.8rem; outline: none; resize: vertical;"></textarea>
+          </div>
+
+          <div style="display: flex; gap: var(--space-sm); justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary modal-close-trigger">Cancel</button>
+            <button type="button" class="btn btn-outline" id="clearSbConfigBtn" style="color: #FF5A79; border-color: rgba(255, 90, 121, 0.4);">Reset to Offline</button>
+            <button type="submit" class="btn btn-primary">Connect & Save</button>
+          </div>
+        </form>
+
+        <div style="margin-top: var(--space-xl); padding-top: var(--space-md); border-top: 1px solid var(--border-subtle); font-size: 0.82rem; color: var(--text-muted);">
+          <strong>Need to run migrations?</strong> Execute the SQL script in <code style="color: var(--accent-primary);">docs/schema.sql</code> in your Supabase SQL Editor.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="site-footer">
     <div class="container">
@@ -395,9 +440,14 @@
     </div>
   </footer>
 
-  <!-- Scripts -->
+  <!-- Supabase Official Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Application & Backend Scripts -->
+  <script src="js/supabase-config.js"></script>
   <script src="js/data.js"></script>
   <script src="js/feed-data.js"></script>
+  <script src="js/supabase-client.js"></script>
   <script src="js/app.js"></script>
   <script src="js/feed.js"></script>
   
