@@ -1,0 +1,334 @@
+/* ==========================================================================
+   MROSHELEVATE DESIGN SYSTEM TOKENS & BASE PRIMITIVES
+   Theme: Dark Futuristic + Natural + Human-Centered + Collaborative
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Color Palette - System Ground */
+  --bg-primary: #101214;
+  --bg-secondary: #191D20;
+  --bg-card: #202529;
+  --bg-card-hover: #262D32;
+  --bg-glass: rgba(32, 37, 41, 0.72);
+  --bg-glass-strong: rgba(25, 29, 32, 0.88);
+  --bg-elevated: #283036;
+
+  /* Accent Tones */
+  --accent-primary: #B7D66A;         /* Vivid Nature-Lime */
+  --accent-primary-hover: #C6E67A;
+  --accent-primary-glow: rgba(183, 214, 106, 0.24);
+  --accent-primary-dim: rgba(183, 214, 106, 0.12);
+
+  --accent-secondary: #72B8A7;       /* Balanced Sage / Teal */
+  --accent-secondary-hover: #83C8B7;
+  --accent-secondary-glow: rgba(114, 184, 167, 0.22);
+  --accent-secondary-dim: rgba(114, 184, 167, 0.12);
+
+  --accent-amber: #E2B053;
+  --accent-coral: #E06C54;
+  --accent-indigo: #8B85E8;
+
+  /* Text & Hierarchy */
+  --text-primary: #F4F4F0;
+  --text-secondary: #A0A6A4;
+  --text-muted: #646C6A;
+  --text-inverse: #101214;
+
+  /* Borders & Dividers */
+  --border-subtle: #303638;
+  --border-active: #475255;
+  --border-glow: rgba(183, 214, 106, 0.45);
+  --border-secondary-glow: rgba(114, 184, 167, 0.45);
+
+  /* Shadows & Depth */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --shadow-glow-lime: 0 0 24px var(--accent-primary-glow);
+  --shadow-glow-sage: 0 0 24px var(--accent-secondary-glow);
+
+  /* Typography */
+  --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Border Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 0.15s ease;
+  --transition-smooth: 0.28s var(--ease-spring);
+  --transition-slow: 0.5s var(--ease-spring);
+}
+
+/* Base Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  position: relative;
+  background-image: 
+    radial-gradient(circle at 18% 12%, rgba(183, 214, 106, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 82% 38%, rgba(114, 184, 167, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 45% 85%, rgba(139, 133, 232, 0.03) 0%, transparent 45%);
+  background-attachment: fixed;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+h3 {
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+  font-weight: 600;
+}
+
+h4 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+p {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.68;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+/* Utility Layout Wrappers */
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+}
+
+.container-wide {
+  width: 100%;
+  max-width: 1380px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+}
+
+/* Button UI Primitives */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 12px 24px;
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-smooth);
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: var(--text-inverse);
+  box-shadow: 0 4px 16px var(--accent-primary-glow);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(183, 214, 106, 0.4);
+}
+
+.btn-secondary {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.btn-outline:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background-color: var(--accent-primary-dim);
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 1.05rem;
+}
+
+/* Glass Card Primitives */
+.card-glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: border-color var(--transition-smooth), transform var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+
+.card-glass:hover {
+  border-color: var(--border-active);
+}
+
+.card-interactive:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-lime);
+}
+
+/* Badges & Status Indicators */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge-pilot {
+  background: rgba(183, 214, 106, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid rgba(183, 214, 106, 0.35);
+}
+
+.badge-verified {
+  background: rgba(114, 184, 167, 0.15);
+  color: var(--accent-secondary);
+  border: 1px solid rgba(114, 184, 167, 0.35);
+}
+
+.badge-shg {
+  background: rgba(226, 176, 83, 0.15);
+  color: var(--accent-amber);
+  border: 1px solid rgba(226, 176, 83, 0.35);
+}
+
+.badge-studio {
+  background: rgba(139, 133, 232, 0.15);
+  color: var(--accent-indigo);
+  border: 1px solid rgba(139, 133, 232, 0.35);
+}
+
+/* Filter Pills */
+.filter-pill {
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  user-select: none;
+}
+
+.filter-pill:hover {
+  border-color: var(--border-active);
+  color: var(--text-primary);
+}
+
+.filter-pill.active {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 12px var(--accent-primary-glow);
+}
+
+/* Subtle Gradient Text */
+.text-gradient-lime {
+  background: linear-gradient(135deg, #FFFFFF 20%, var(--accent-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-sage {
+  background: linear-gradient(135deg, #FFFFFF 20%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
