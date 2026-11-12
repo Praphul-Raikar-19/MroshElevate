@@ -68,6 +68,7 @@
 ### Core Modules Matrix
 | Module | MVP Pilot Scope (In Scope) | Future Expansion (Post-Pilot) |
 | :--- | :--- | :--- |
+| **Creator Feed (Core Blueprint)** | 3-Column Creator Feed: Central social & professional stream with Like, Comment, Share, Save, and rich composer. Left creator list & right connection recommendations. | Algorithmic personalized feed ranking & video reel streaming. |
 | **Landing Page** | Visually immersive dark-futuristic landing page with ecosystem overview, live featured creators, opportunities, pilot highlights, and interactive CTAs. | Multilingual localization (Kannada, Hindi, Tamil). |
 | **Authentication & Onboarding** | Multi-role registration (Creator, Brand, SHG, Studio, Investor), custom skill tags, location/district selector, portfolio quick-setup. | OAuth (Google/GitHub/LinkedIn) & DigiLocker ID verification. |
 | **Profiles & Portfolios** | Rich profiles with bio, rate, skills, past clients, media showcase (images/video links), availability toggle, verification badge. | Dynamic video reel player with streaming compression. |
