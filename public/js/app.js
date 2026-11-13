@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtered = MROSH_DATA.creators.filter(item => {
       const matchesCategory = state.selectedCategory === "all" || item.category === state.selectedCategory;
       const q = state.searchQuery.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         !q ||
         item.name.toLowerCase().includes(q) ||
         item.role.toLowerCase().includes(q) ||
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
         badgeHtml = `<span class="badge badge-verified">Verified Creator</span>`;
       }
 
-      const skillsHtml = creator.skills.slice(0, 3).map(skill => 
+      const skillsHtml = creator.skills.slice(0, 3).map(skill =>
         `<span class="skill-tag">${skill}</span>`
       ).join("");
 
